@@ -1,0 +1,16 @@
+# Source video — 8.7 MB, not served. Kept locally for re-extracting frames
+# (see "Re-extracting frames" in README.md).
+Animation.mp4
+
+# CV source, not part of the site
+cv-mohit-amazon-2026-07-27.tex
+*.aux
+*.log
+*.out
+
+# OS / editor cruft
+Thumbs.db
+desktop.ini
+.DS_Store
+.vscode/
+.idea/

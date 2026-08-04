@@ -1,0 +1,595 @@
+/* ============================================================
+   Mohit Sangwan — portfolio
+   Palette sampled from the hero frames: warm taupe (flesh) at
+   frame 1 cooling to gray (stone) at the end. Warm = live,
+   cool = finished. No chromatic accent anywhere.
+   ============================================================ */
+
+@font-face{
+  font-family:"LM Roman";
+  src:url("../fonts/lmroman10-italic.woff") format("woff");
+  font-style:italic; font-weight:400; font-display:swap;
+}
+@font-face{
+  font-family:"LM Mono";
+  src:url("../fonts/lmmono10-regular.woff") format("woff");
+  font-style:normal; font-weight:400; font-display:swap;
+}
+
+:root{
+  --void:#0B0B0C;
+  --marble:#D8D4CD;
+  --taupe:#948C81;
+  --slate:#8F8F91;
+  --patina:#57534E;
+
+  --serif:"LM Roman",Iowan Old Style,Palatino,Georgia,serif;
+  --mono:"LM Mono",ui-monospace,SFMono-Regular,Menlo,monospace;
+  --sans:-apple-system,BlinkMacSystemFont,"Segoe UI",Inter,Roboto,Helvetica,Arial,sans-serif;
+
+  --gut:clamp(1.25rem,5vw,5.5rem);
+  --rule:1px solid color-mix(in srgb,var(--patina) 55%,transparent);
+}
+
+*,*::before,*::after{box-sizing:border-box}
+
+html{
+  background:var(--void);
+  -webkit-text-size-adjust:100%;
+  scroll-behavior:smooth;
+}
+/* JS smooth-scroll owns scrolling when active; native would fight it */
+html.has-smooth{scroll-behavior:auto}
+
+body{
+  margin:0;
+  background:var(--void);
+  color:var(--marble);
+  font-family:var(--sans);
+  /* The base step, so every unstyled paragraph — cert points, card
+     bodies, the toolchain list — comes up with the headings rather
+     than being left behind by them. */
+  font-size:clamp(1.06rem,.6vw + .92rem,1.2rem);
+  line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  text-rendering:optimizeLegibility;
+  /* NOT overflow-x:hidden — that makes body a scroll container, and then
+     the sticky hero stage tries to stick to body's scrollport instead of
+     the viewport. Sticky silently dies and the hero scrolls away.
+     `clip` contains overflow without creating a scroll container. */
+  overflow-x:clip;
+}
+
+img,canvas,svg{display:block;max-width:100%}
+a{color:inherit;text-decoration:none}
+
+::selection{background:var(--taupe);color:var(--void)}
+
+:focus-visible{
+  outline:2px solid var(--marble);
+  outline-offset:3px;
+  border-radius:2px;
+}
+
+.skip{
+  position:fixed;top:-100px;left:1rem;z-index:200;
+  padding:.7rem 1.1rem;background:var(--marble);color:var(--void);
+  font:400 .72rem/1 var(--mono);letter-spacing:.1em;text-transform:uppercase;
+}
+.skip:focus{top:1rem}
+
+/* ---------- shared type devices ---------- */
+.eyebrow{
+  margin:0 0 1.4rem;
+  font:400 .68rem/1 var(--mono);
+  letter-spacing:.24em;
+  text-transform:uppercase;
+  color:var(--taupe);
+}
+.eyebrow::before{content:"— ";color:var(--patina)}
+
+.sec__title{
+  margin:0 0 1.2rem;
+  font-family:var(--sans);
+  font-size:clamp(2.3rem,4.8vw,4rem);
+  font-weight:600;
+  letter-spacing:-.025em;
+  line-height:1.02;
+}
+.sec__title em{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:0}
+
+/* =========================================================
+   NAV
+   ========================================================= */
+.nav{
+  position:fixed;inset:0 0 auto;z-index:100;
+  display:flex;align-items:flex-start;justify-content:space-between;gap:1rem;
+  padding:clamp(1rem,2.4vw,1.9rem) var(--gut);
+  pointer-events:none;
+}
+.nav > *{pointer-events:auto}
+
+.nav__mark{display:grid;gap:.34rem}
+.nav__name{font-size:.98rem;font-weight:600;letter-spacing:-.01em}
+.nav__tag{
+  font:400 .6rem/1 var(--mono);
+  letter-spacing:.2em;text-transform:uppercase;
+  color:color-mix(in srgb,var(--marble) 50%,transparent);
+}
+
+.nav__pill{
+  display:none;
+  gap:.2rem;padding:.34rem;
+  border:1px solid color-mix(in srgb,var(--marble) 16%,transparent);
+  border-radius:999px;
+  background:color-mix(in srgb,var(--void) 55%,transparent);
+  backdrop-filter:blur(14px);
+  -webkit-backdrop-filter:blur(14px);
+}
+.nav__pill a{
+  padding:.44rem 1rem;border-radius:999px;
+  font-size:.84rem;color:color-mix(in srgb,var(--marble) 74%,transparent);
+  transition:background .25s ease,color .25s ease;
+}
+.nav__pill a:hover{background:color-mix(in srgb,var(--marble) 12%,transparent);color:var(--marble)}
+@media (min-width:768px){.nav__pill{display:flex}}
+
+.nav__cta{
+  display:inline-flex;align-items:center;gap:.55rem;
+  padding:.42rem .5rem .42rem 1rem;border-radius:999px;
+  background:var(--marble);color:var(--void);
+  font-size:.82rem;font-weight:600;white-space:nowrap;
+}
+.nav__cta > span:first-child{display:none}
+@media (min-width:520px){.nav__cta > span:first-child{display:inline}}
+.nav__badge{
+  display:grid;place-items:center;width:1.55rem;height:1.55rem;
+  border-radius:999px;background:var(--void);color:var(--marble);
+  transition:transform .3s cubic-bezier(.22,1,.36,1);
+}
+.nav__cta:hover .nav__badge{transform:translateX(3px)}
+
+/* =========================================================
+   HERO
+   ========================================================= */
+.hero__track{height:600vh}
+
+.hero__stage{
+  position:sticky;top:0;
+  width:100%;height:100svh;
+  background:#000;
+  overflow:hidden;
+}
+
+.hero__tilt{
+  position:absolute;inset:0;
+  transform-style:preserve-3d;
+  will-change:transform;
+}
+
+.hero__canvas{
+  width:100%;height:100%;
+  opacity:0; /* faded in by JS the moment frame 1 lands */
+}
+
+/* narrow-screen single still */
+.hero__still{
+  position:absolute;inset:0;
+  width:100%;height:100%;
+  object-fit:cover;
+  display:none;
+}
+.hero--still .hero__still{display:block}
+.hero--still .hero__canvas{display:none}
+
+/* Phones only. No image sequence, but the hero still pins and the
+   drum still rolls against a shorter track, so beats two and three
+   are never lost. Reduced motion does NOT come here — it keeps the
+   full scrub, minus the lag and the tilt. */
+.hero--still .hero__track{height:300vh}
+
+/* legibility scrim — centre of the frame stays untouched */
+.hero__scrim{position:absolute;inset:0;pointer-events:none}
+.scrim{position:absolute;display:block}
+.scrim--l{inset:0 33.333% 0 0;background:linear-gradient(90deg,rgba(0,0,0,.45),rgba(0,0,0,0))}
+.scrim--r{inset:0 0 0 50%;background:linear-gradient(90deg,rgba(0,0,0,0),rgba(0,0,0,.4))}
+.scrim--t{inset:0 0 auto 0;height:22vh;background:linear-gradient(180deg,rgba(0,0,0,.55),rgba(0,0,0,0))}
+
+/* ---------- text drum ---------- */
+.drum{position:absolute;inset:0;pointer-events:none}
+
+/* Each beat is a full-height box so its own centre sits on the
+   stage midline — that makes rotateX pivot exactly there without
+   needing a -50% translate the compositor can't optimise. */
+.beat{
+  position:absolute;top:0;bottom:0;left:var(--gut);
+  /* 74vw not 72: the headline stepped up, and the right-hand meta
+     column only appears at 1024px+, where this box still stops well
+     short of it. */
+  width:min(42rem,74vw);
+  display:flex;flex-direction:column;justify-content:center;align-items:flex-start;
+  margin:0;
+  transform-origin:50% 50%;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+  will-change:transform;
+}
+
+.beat__pill{
+  display:inline-block;margin:0 0 1.5rem;
+  padding:.46rem 1rem;border-radius:999px;
+  background:color-mix(in srgb,#000 45%,transparent);
+  backdrop-filter:blur(10px);
+  -webkit-backdrop-filter:blur(10px);
+  border:1px solid color-mix(in srgb,var(--marble) 14%,transparent);
+  font:400 .68rem/1 var(--mono);
+  letter-spacing:.22em;text-transform:uppercase;
+  color:var(--marble);
+}
+
+.beat__head{
+  margin:0 0 1.5rem;
+  font-size:clamp(2.7rem,8vw,5.4rem);
+  font-weight:600;
+  line-height:.95;
+  letter-spacing:-.03em;
+}
+.beat__head span,.beat__head em{display:block}
+.beat__head em{
+  font-family:var(--serif);
+  font-style:italic;font-weight:400;
+  letter-spacing:-.005em;
+  color:var(--marble);
+}
+
+.beat__body{
+  margin:0;max-width:31rem;
+  color:color-mix(in srgb,var(--marble) 70%,transparent);
+  font-size:clamp(1.02rem,.45vw + .92rem,1.16rem);
+  line-height:1.55;
+  text-wrap:pretty;
+}
+
+/* ---------- right meta column ---------- */
+.meta{
+  position:absolute;right:var(--gut);top:0;bottom:0;
+  display:none;
+  flex-direction:column;justify-content:space-between;align-items:flex-end;
+  padding:clamp(5rem,10vh,8rem) 0 clamp(2rem,5vh,3.5rem);
+  text-align:right;
+  font:400 .62rem/1.7 var(--mono);
+  letter-spacing:.16em;text-transform:uppercase;
+  color:color-mix(in srgb,var(--marble) 55%,transparent);
+  pointer-events:none;
+}
+@media (min-width:1024px){.meta{display:flex}}
+.meta p{margin:0}
+.meta__grp{display:grid;gap:.3rem;max-width:14rem}
+.meta__lbl{color:var(--patina)}
+.meta__lbl:not(:first-child){margin-top:.9rem}
+.meta__grp--end{justify-items:end;gap:.7rem}
+.meta__grp--end svg{opacity:.6;animation:nudge 2.6s ease-in-out infinite}
+@keyframes nudge{0%,100%{transform:translateY(0)}50%{transform:translateY(5px)}}
+
+/* =========================================================
+   SECTIONS BELOW THE HERO
+   ========================================================= */
+.reveal{
+  opacity:0;transform:translateY(18px);
+  transition:opacity .9s cubic-bezier(.22,1,.36,1),transform .9s cubic-bezier(.22,1,.36,1);
+}
+.reveal.is-in{opacity:1;transform:none}
+
+.say{
+  padding:clamp(6rem,16vh,12rem) var(--gut);
+  max-width:64rem;
+}
+.say__lead{
+  margin:0;
+  font-size:clamp(1.5rem,3.5vw,2.7rem);
+  font-weight:500;line-height:1.28;letter-spacing:-.02em;
+  text-wrap:pretty;
+}
+.say__lead em{
+  font-family:var(--serif);font-style:italic;font-weight:400;
+  color:var(--taupe);letter-spacing:0;
+}
+
+.sec__head{max-width:46rem;margin:0 0 clamp(3rem,7vh,5rem)}
+.sec__note{
+  margin:0;max-width:34rem;
+  color:var(--slate);font-size:.96rem;
+}
+
+/* ---------- SIGNATURE: X.509 validity meters ---------- */
+.work{padding:clamp(4rem,9vh,7rem) var(--gut) clamp(6rem,13vh,10rem);border-top:var(--rule)}
+
+.axis{
+  position:relative;height:1.6rem;margin:0 0 .5rem;
+  border-bottom:var(--rule);
+  font:400 .6rem/1 var(--mono);letter-spacing:.14em;text-transform:uppercase;
+  color:var(--patina);
+}
+.axis__tick{
+  position:absolute;bottom:.45rem;
+  left:calc(var(--at) * 100%);
+  transform:translateX(-50%);
+  white-space:nowrap;
+}
+.axis__tick:first-child{transform:none}
+.axis__tick:last-child{transform:translateX(-100%)}
+.axis__tick--now{color:var(--taupe)}
+
+.certs{list-style:none;margin:0;padding:0;display:grid}
+
+.cert{
+  padding:clamp(1.75rem,3.6vw,2.75rem) 0;
+  border-bottom:var(--rule);
+}
+
+.cert__top{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:.5rem 1.1rem;
+  margin-bottom:1.4rem;
+}
+.cert__org{
+  margin:0;
+  font-size:clamp(1.65rem,3.5vw,2.5rem);
+  font-weight:600;letter-spacing:-.025em;line-height:1;
+}
+.cert__org span{
+  font-family:var(--serif);font-style:italic;font-weight:400;
+  font-size:.62em;color:var(--slate);letter-spacing:0;
+}
+.cert__role{
+  margin:0;
+  font:400 .66rem/1 var(--mono);
+  letter-spacing:.16em;text-transform:uppercase;
+  color:var(--slate);
+}
+
+.cert__fields{
+  display:grid;gap:1rem 2.5rem;
+  grid-template-columns:repeat(auto-fit,minmax(8.5rem,1fr));
+  margin:0 0 1.1rem;
+  font-family:var(--mono);font-size:.7rem;
+}
+.cert__fields dt{
+  color:var(--patina);
+  letter-spacing:.16em;text-transform:uppercase;
+  margin-bottom:.35rem;
+}
+.cert__fields dd{margin:0;color:var(--marble);letter-spacing:.04em}
+.cert__open{color:var(--taupe)}
+.cert[data-state="active"] .cert__status{color:var(--taupe)}
+.cert[data-state="expired"] .cert__status{color:var(--patina)}
+
+/* the meter itself */
+.cert__meter{
+  position:relative;height:3px;
+  background:color-mix(in srgb,var(--patina) 30%,transparent);
+  margin:0 0 1.75rem;
+}
+.cert__bar{
+  position:absolute;top:0;bottom:0;
+  left:var(--x,0%);width:var(--w,0%);
+  background:var(--patina);
+  transform:scaleX(0);transform-origin:left;
+  transition:transform 1.1s cubic-bezier(.22,1,.36,1) .12s;
+}
+.is-in .cert__bar{transform:scaleX(1)}
+.cert[data-state="active"] .cert__bar{
+  background:linear-gradient(90deg,var(--patina),var(--taupe));
+  box-shadow:0 0 12px color-mix(in srgb,var(--taupe) 45%,transparent);
+}
+
+.cert__pts{
+  list-style:none;margin:0;padding:0;
+  display:grid;gap:.85rem;
+  max-width:62rem;
+}
+.cert__pts li{
+  position:relative;padding-left:1.5rem;
+  color:color-mix(in srgb,var(--marble) 78%,transparent);
+  font-size:.98rem;text-wrap:pretty;
+}
+.cert__pts li::before{
+  content:"";position:absolute;left:0;top:.62em;
+  width:.5rem;height:1px;background:var(--patina);
+}
+.cert__pts b{color:var(--marble);font-weight:600}
+
+/* ---------- builds ---------- */
+.builds{padding:clamp(5rem,11vh,8rem) var(--gut);border-top:var(--rule)}
+.grid{
+  display:grid;gap:clamp(1.5rem,3vw,2.5rem);
+  grid-template-columns:repeat(auto-fit,minmax(min(20rem,100%),1fr));
+}
+.card{
+  padding:clamp(1.5rem,3vw,2.25rem);
+  border:var(--rule);
+  background:color-mix(in srgb,var(--marble) 3%,transparent);
+  transition:border-color .4s ease,background .4s ease,transform .5s cubic-bezier(.22,1,.36,1);
+}
+.card:hover{
+  border-color:color-mix(in srgb,var(--taupe) 60%,transparent);
+  background:color-mix(in srgb,var(--marble) 6%,transparent);
+  transform:translateY(-3px);
+}
+.card__title{
+  margin:0 0 .3rem;
+  font-size:clamp(1.5rem,2.7vw,2rem);
+  font-weight:600;letter-spacing:-.02em;
+}
+.card__sub{
+  margin:0 0 1.1rem;
+  font-family:var(--serif);font-style:italic;
+  color:var(--taupe);font-size:1.18rem;
+}
+.card__body{margin:0 0 1.4rem;color:color-mix(in srgb,var(--marble) 74%,transparent);font-size:1.04rem;text-wrap:pretty}
+.card__stack{
+  margin:0;padding-top:1.1rem;border-top:var(--rule);
+  font:400 .64rem/1.6 var(--mono);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--slate);
+}
+
+/* ---------- toolchain ---------- */
+.kit{padding:clamp(5rem,11vh,8rem) var(--gut);border-top:var(--rule)}
+.kit__list{
+  display:grid;gap:0;margin:0;
+  grid-template-columns:repeat(auto-fit,minmax(min(26rem,100%),1fr));
+}
+.kit__list > div{
+  display:grid;gap:.4rem 1.5rem;
+  grid-template-columns:minmax(7rem,9rem) 1fr;
+  padding:1rem 0;border-top:var(--rule);
+}
+.kit__list dt{
+  font:400 .64rem/1.5 var(--mono);
+  letter-spacing:.16em;text-transform:uppercase;color:var(--taupe);
+}
+.kit__list dd{margin:0;color:color-mix(in srgb,var(--marble) 80%,transparent);font-size:.94rem}
+
+/* ---------- contact ---------- */
+/* The section becomes a stage: a starfield canvas pinned behind, and a
+   two-column grid above it. `isolation` keeps the star layer's stacking
+   local so it can never slide over the fixed nav. */
+.contact{
+  position:relative;isolation:isolate;overflow:clip;
+  padding:clamp(6rem,14vh,11rem) var(--gut);border-top:var(--rule);
+}
+/* Two faint pools of light so the stars sit in depth rather than on a
+   flat black card. Both are behind the stars. */
+.contact::before{
+  content:"";position:absolute;z-index:-2;inset:0;pointer-events:none;
+  background:
+    radial-gradient(58% 62% at 82% 42%,color-mix(in srgb,var(--patina) 26%,transparent),transparent 70%),
+    radial-gradient(70% 50% at 8% 108%,color-mix(in srgb,var(--taupe) 11%,transparent),transparent 72%);
+}
+.contact__stars{
+  position:absolute;z-index:-1;inset:0;
+  width:100%;height:100%;pointer-events:none;
+}
+.contact__grid{
+  position:relative;
+  display:grid;gap:clamp(3rem,7vw,5.5rem);
+  grid-template-columns:minmax(0,1fr);
+  align-items:center;
+}
+@media (min-width:940px){
+  /* Was .92fr. The globe column takes a little more of the row now that
+     the canvas can reach 40rem, so it is not capped by its track before
+     it reaches its own max-width. */
+  .contact__grid{grid-template-columns:minmax(0,1fr) minmax(0,1.04fr)}
+}
+.contact__col{min-width:0}
+.contact__title{
+  margin:0 0 1.1rem;
+  font-size:clamp(2.3rem,6.1vw,4.7rem);
+  font-weight:600;line-height:1.02;letter-spacing:-.03em;
+  /* Up with the font size, so the line breaks land in the same places
+     rather than the whole heading collapsing onto more lines. */
+  max-width:38rem;
+}
+.contact__title em{font-family:var(--serif);font-style:italic;font-weight:400;letter-spacing:0}
+.contact__note{
+  margin:0 0 clamp(2.5rem,6vh,4rem);color:var(--slate);
+  font-size:clamp(1.05rem,.6vw + .92rem,1.22rem);
+}
+
+.contact__list{list-style:none;margin:0;padding:0;max-width:46rem}
+.contact__list a{
+  display:flex;flex-wrap:wrap;align-items:baseline;gap:.4rem 1.5rem;
+  padding:1.3rem 0;border-top:var(--rule);
+  transition:padding-left .4s cubic-bezier(.22,1,.36,1),border-color .4s ease;
+}
+.contact__list li:last-child a{border-bottom:var(--rule)}
+.contact__list a:hover{padding-left:.7rem;border-color:var(--taupe)}
+.contact__list span{
+  min-width:6rem;
+  font:400 .66rem/1 var(--mono);
+  letter-spacing:.2em;text-transform:uppercase;color:var(--patina);
+}
+.contact__list b{font-weight:500;font-size:clamp(1.12rem,2.3vw,1.42rem);letter-spacing:-.01em}
+
+/* ---------- the orb ---------- */
+/* globe.js measures this canvas with getBoundingClientRect and warns if
+   it has no box, so the size is stated here rather than left to the
+   grid. aspect-ratio:1 keeps the sphere circular at every width; the
+   widest orbit is 1.50 radii and R is 0.26 of the short side, so the
+   labels have room without clipping. */
+.orb{
+  position:relative;margin:0;
+  display:grid;justify-items:center;gap:1.5rem;
+}
+.orb__canvas{
+  width:100%;max-width:40rem;aspect-ratio:1;
+  /* No border-radius here: on a canvas it clips the painted bitmap, and
+     the outer orbit's far shoulder swings out to 0.90 of the half-width.
+     The halo below is what makes the box read as round — closest-side so
+     its edge tracks the sphere silhouette (discR = 0.276 of the short
+     side at R = 0.26) rather than the corners of the square. The stops
+     follow discR: 0.276 of the short side is 0.552 of the closest-side
+     radius, so the solid centre ends just inside the sphere edge. */
+  background:radial-gradient(circle closest-side,
+    color-mix(in srgb,var(--patina) 16%,transparent) 0 46%,
+    transparent 72%);
+  /* pan-y, not none: horizontal drags spin the globe, vertical ones
+     still scroll the page. Taking the vertical axis here would trap a
+     phone reader on the globe with no way past it — so tilt is a
+     mouse and keyboard affordance, and spin works everywhere. */
+  cursor:grab;touch-action:pan-y;
+}
+.orb__canvas:active{cursor:grabbing}
+/* The global focus ring squares its target off with border-radius:2px;
+   follow the halo instead and tuck the ring inside the box, where the
+   orbits leave room, so it does not push the caption around. */
+.orb__canvas:focus-visible{border-radius:50%;outline-offset:-2px}
+
+.orb__cap{
+  display:grid;gap:.55rem;max-width:24rem;
+  font:400 .68rem/1.7 var(--mono);
+  letter-spacing:.14em;text-transform:uppercase;
+  color:color-mix(in srgb,var(--marble) 52%,transparent);
+  text-align:center;
+}
+.orb__lbl{color:var(--taupe)}
+.orb__hint{
+  display:inline-flex;align-items:center;justify-content:center;gap:.5rem;
+  color:var(--patina);
+}
+.orb__hint::before,.orb__hint::after{
+  content:"";width:1.1rem;height:1px;background:currentColor;
+}
+
+/* Narrow screens: the grid has already stacked, so the sphere gets the
+   width but not the whole viewport height — 86vw keeps a gutter either
+   side so the orbit shoulders and their labels stay on canvas. */
+@media (max-width:939px){
+  .orb__canvas{max-width:min(30rem,86vw)}
+}
+
+/* ---------- footer ---------- */
+.foot{
+  display:flex;flex-wrap:wrap;justify-content:space-between;gap:.6rem 2rem;
+  padding:2rem var(--gut) 2.5rem;border-top:var(--rule);
+  font:400 .62rem/1.6 var(--mono);
+  letter-spacing:.14em;text-transform:uppercase;color:var(--patina);
+}
+.foot p{margin:0}
+
+/* =========================================================
+   REDUCED MOTION
+   ========================================================= */
+@media (prefers-reduced-motion:reduce){
+  *,*::before,*::after{
+    animation-duration:.001ms!important;
+    animation-iteration-count:1!important;
+    transition-duration:.001ms!important;
+  }
+  html{scroll-behavior:auto}
+  .reveal{opacity:1;transform:none}
+  .cert__bar{transform:scaleX(1)}
+  /* The hero tilt is switched off in JS (see `calm` in hero.js), not
+     here — a blanket transform:none would also kill the canvas
+     scrub, which is reader-driven and stays. */
+}
