@@ -98,12 +98,23 @@ still glide, via native `scrollTo({behavior:'smooth'})`.
 
 **The hero has two tiers.** Every phone gets scroll-driven parallax on the
 still — a compositor-only transform, no extra bytes, driven by the same eased
-progress the text drum reads so frame and copy can never drift apart. On a
-connection that can afford it (`effectiveType === '4g'`, `saveData` off) the
-121-frame mobile sequence loads and cross-fades into a real scrub once ~40%
-has arrived. No Network Information API means no upgrade — a phone on a train
-should not spend 1.8 MB finding out that was a bad idea. Reduced motion also
-stays on parallax.
+progress the text drum reads so frame and copy can never drift apart. The
+121-frame mobile sequence then loads and cross-fades into a real scrub once
+~40% has arrived.
+
+The upgrade gate is about **bandwidth, not motion**, and it fails *open*:
+
+| condition | result | why |
+|---|---|---|
+| `saveData` on | still | explicit "don't" from the reader |
+| `effectiveType` 3g / 2g / slow-2g | still | measured slow link |
+| no Network Information API | **scrub** | unknown ≠ slow — iOS Safari and Firefox have never shipped it |
+| `prefers-reduced-motion` | **scrub** | scrubbing is direct manipulation; the drift is what gets dropped |
+
+Failing open matters: an earlier version treated a missing API as a failed
+check, which silently pinned every iPhone on the planet to a single still.
+Reduced motion keeps the frames — nothing moves unless the reader moves it —
+but loses the parallax drift, which is the part that moves on its own.
 
 **Reveals stagger per batch.** Anything crossing the threshold in the same
 `IntersectionObserver` callback is treated as one visual group and cascades at
@@ -133,14 +144,14 @@ Windows path — edit `CHROME` if yours differs).
 
 ```bash
 node tools/test-mobile.mjs    # tier selection, parallax, reveals, no desktop frames on phones
+node tools/test-gate.mjs      # the upgrade gate across 8 connection/motion combinations
 node tools/test-touch.mjs     # touchmove not hijacked, desktop keeps smooth scroll, canvas really paints
 node tools/shoot.mjs          # screenshots to tools/shots/ at four scroll depths
 ```
 
-`test-mobile` asserts the connection gate in all four combinations (4G,
-3G, Save-Data, reduced motion). Note that headless Chrome reports
-`prefers-reduced-motion: reduce` **by default** — both suites set it
-explicitly, and forgetting to is a silent way to test the wrong thing.
+Note that headless Chrome reports `prefers-reduced-motion: reduce` **by
+default** — every suite sets it explicitly, and forgetting to is a silent
+way to test the wrong thing.
 
 To decide whether something is a regression or was always broken, extract
 any commit and shoot it side by side:

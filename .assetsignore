@@ -1,7 +1,16 @@
 # Files in the repo root that should not be served publicly.
 # The assets directory is "./", so without this they'd be reachable over HTTP.
+
+# Repository internals. Wrangler walks the whole directory, so without
+# these the deploy publishes .git/config, .git/index and the object
+# store — i.e. the entire history, downloadable from the live site.
+.git
+.gitignore
+.wrangler
+
 wrangler.jsonc
 .assetsignore
 README.md
-.gitignore
 tools
+Animation.mp4
+cv-mohit-amazon-2026-07-27.tex

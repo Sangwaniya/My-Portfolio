@@ -133,7 +133,6 @@ const r3 = await run('phone, 4g + save-data', {
 const r4 = await run('phone, 4g, reduced motion', {
   width: 390, height: 844, saveData: false, effectiveType: '4g', reduced: true
 });
-
 console.log('\n\n===== ASSERTIONS =====');
 const checks = [
   ['4g upgrades to scrub',            r1.after.scrub === true],
@@ -144,8 +143,10 @@ const checks = [
   ['3g still parallaxes',             r2.before.transform !== r2.after.transform],
   ['save-data stays on still',        r3.after.scrub === false],
   ['save-data pulled no frames',      r3.mobileFrames === 0],
-  ['reduced motion: no scrub',        r4.after.scrub === false],
-  ['reduced motion: no frames',       r4.mobileFrames === 0],
+  // Reduced motion keeps the scrub — it is direct manipulation, same
+  // reasoning the desktop path uses. What it drops is the drift.
+  ['reduced motion still scrubs',     r4.after.scrub === true],
+  ['reduced motion: no parallax drift', r4.before.transform === r4.after.transform],
   ['reveals fire',                    r1.reveals.shown > 0],
   ['reveals staggered',               new Set(r1.reveals.delays).size > 1],
   ['no page errors',                  [r1, r2, r3, r4].every((r) => r.errs.length === 0)]

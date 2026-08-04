@@ -117,17 +117,33 @@
     layoutDrum(0);
     startMobileParallax();
 
-    if (!calm && fastConnection()) upgradeToMobileScrub();
+    if (fastConnection()) upgradeToMobileScrub();
 
     startDrumLoop(true);
     return;
   }
 
+  /* The gate is about *bandwidth*, not motion.
+
+     Reduced motion is deliberately not consulted here, matching the
+     desktop path above: scrubbing is direct manipulation, nothing moves
+     unless the reader moves it, so it is not the involuntary motion the
+     preference asks us to drop. `calm` still removes the lag, the tilt
+     and the drum's tumble.
+
+     Absence of the Network Information API means "unknown", not "slow".
+     iOS Safari and Firefox have never shipped it, so treating a missing
+     API as a failed check silently pinned every iPhone to a single
+     still — the exact bug this comment exists to prevent. Default to
+     the animation and let the two explicit stop signals, Save-Data and
+     a measured slow effectiveType, be the things that opt out. */
   function fastConnection() {
     var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
-    if (!c) return false;
-    if (c.saveData) return false;
-    return c.effectiveType === '4g';
+    if (!c) return true;                       // unknown -> assume capable
+    if (c.saveData) return false;              // explicit "don't"
+    var t = c.effectiveType;
+    if (!t) return true;                       // API present but uninformative
+    return t === '4g';                         // 2g / 3g / slow-2g stay on the still
   }
 
   /* Parallax rides the same eased drumProgress the beats use, so the
@@ -138,6 +154,16 @@
     if (!still || !tilt) return;
 
     tilt.style.willChange = 'transform';
+
+    /* Calm mode keeps the scrub but drops the drift. The frames track
+       the finger, which is direct manipulation; a background that
+       slides and scales on its own is the involuntary part, so it goes.
+       A flat overscan scale stays, purely so the still fills the stage
+       identically in both modes. */
+    if (calm) {
+      tilt.style.transform = 'translate3d(0,0,0) scale(1.04)';
+      return;
+    }
 
     mobileParallax = function (p) {
       var scale = PAR_SCALE[0] + (PAR_SCALE[1] - PAR_SCALE[0]) * p;
@@ -199,10 +225,13 @@
 
       // Parallax now rides the canvas instead of the still. Keep a
       // little of it — the scrub is the motion, the drift is seasoning.
-      mobileParallax = function (p) {
-        var scale = 1.06 + (1.0 - 1.06) * p;
-        tilt.style.transform = 'translate3d(0,0,0) scale(' + scale.toFixed(4) + ')';
-      };
+      // Calm mode keeps the flat scale set above and no drift.
+      if (!calm) {
+        mobileParallax = function (p) {
+          var scale = 1.06 + (1.0 - 1.06) * p;
+          tilt.style.transform = 'translate3d(0,0,0) scale(' + scale.toFixed(4) + ')';
+        };
+      }
 
       mobileDraw = function (p) {
         var pos = p * (MOBILE.count - 1);
