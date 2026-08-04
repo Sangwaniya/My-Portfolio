@@ -1,0 +1,6 @@
+# Files in the repo root that should not be served publicly.
+# The assets directory is "./", so without this they'd be reachable over HTTP.
+wrangler.jsonc
+.assetsignore
+README.md
+.gitignore

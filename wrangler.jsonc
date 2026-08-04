@@ -1,0 +1,8 @@
+{
+  // Assets-only Worker: no server code, just static files off the CDN.
+  "name": "personal-website",
+  "compatibility_date": "2026-08-04",
+  "assets": {
+    "directory": "./"
+  }
+}
