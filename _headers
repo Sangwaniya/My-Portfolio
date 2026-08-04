@@ -1,8 +1,11 @@
 # Cloudflare Pages / Netlify header rules. Plain text, no build step needed.
 
-# The 241 hero frames and the fonts never change once deployed — let browsers
+# The hero frames and the fonts never change once deployed — let browsers
 # and the CDN hold them for a year so a repeat visit costs nothing.
 /public/hero/frames/*
+  Cache-Control: public, max-age=31536000, immutable
+
+/public/hero/frames-mobile/*
   Cache-Control: public, max-age=31536000, immutable
 
 /assets/fonts/*

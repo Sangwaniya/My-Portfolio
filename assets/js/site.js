@@ -52,9 +52,27 @@
     return;
   }
 
+  /* Stagger is per *batch*, not per element. Anything crossing the
+     threshold in the same callback is one visual group — the three
+     cards, the three certs — so they cascade instead of snapping in
+     as one slab. A section that arrives alone gets no delay at all,
+     which is the point: the rhythm comes from the content, not from
+     hard-coded nth-child rules.
+
+     Entries are not handed to us in document order, so sort by
+     position first or the cascade runs at random. */
+  var STEP = 90;    // ms between siblings
+  var CAP  = 360;   // never hold the last item longer than this
+
   var io = new IntersectionObserver(function (entries) {
-    entries.forEach(function (entry) {
-      if (!entry.isIntersecting) return;
+    var arriving = entries.filter(function (e) { return e.isIntersecting; });
+
+    arriving.sort(function (a, b) {
+      return a.boundingClientRect.top - b.boundingClientRect.top;
+    });
+
+    arriving.forEach(function (entry, i) {
+      entry.target.style.transitionDelay = Math.min(i * STEP, CAP) + 'ms';
       entry.target.classList.add('is-in');
       io.unobserve(entry.target);
     });

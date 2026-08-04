@@ -20,6 +20,21 @@
   var TILT_DEG = 2.2;
   var TILT_FADE_FRAMES = 6;
 
+  /* The phone-sized sequence: every 2nd frame at 720w, 1.8 MB against
+     the desktop set's 16 MB. Regenerate with tools/encode-mobile-frames.mjs
+     and update `count` to whatever it prints. */
+  var MOBILE = {
+    path: 'public/hero/frames-mobile/frame_',
+    count: 121
+  };
+
+  /* Parallax on the still — the baseline every phone gets, before any
+     decision about downloading frames. Scale stays above 1 across the
+     whole range so there is always overscan to translate into; without
+     that headroom the drift would expose an edge. */
+  var PAR_SCALE = [1.16, 1.08];
+  var PAR_SHIFT = 0.03;                   // ±3% of stage height
+
   var track  = document.getElementById('heroTrack');
   var hero   = document.getElementById('hero');
   var canvas = document.getElementById('heroCanvas');
@@ -43,7 +58,7 @@
   var small   = window.matchMedia('(max-width: 768px)').matches;
 
   console.log(
-    '[hero] mode:', small ? 'STILL (narrow screen)' : reduced ? 'SCRUB (calm)' : 'SCRUB',
+    '[hero] mode:', small ? 'MOBILE (parallax, may upgrade to scrub)' : reduced ? 'SCRUB (calm)' : 'SCRUB',
     '| prefers-reduced-motion:', reduced,
     '| width:', window.innerWidth
   );
@@ -56,6 +71,11 @@
      -------------------------------------------------------- */
   var visible = true;
   var drumProgress = 0;
+
+  // Set by the narrow-screen path. No-ops on desktop, which lets the
+  // drum loop call them unconditionally instead of branching per frame.
+  var mobileParallax = function () {};
+  var mobileDraw = null;
 
   if ('IntersectionObserver' in window) {
     new IntersectionObserver(function (entries) {
@@ -76,11 +96,162 @@
      -------------------------------------------------------- */
   var calm = reduced;
 
+  /* --------------------------------------------------------
+     Narrow screens.
+
+     Two tiers. Every phone gets scroll-driven parallax on the
+     still — compositor-only transform, no extra bytes, locked to
+     the same rawProgress() the drum reads, so it can never drift
+     out of sync with the copy.
+
+     On a connection that can afford it we then pull the 1.8 MB
+     mobile sequence and cross-fade into a real scrub. The check is
+     deliberately conservative: 4g and no Save-Data, and when the
+     API is missing we stay on parallax rather than guessing. A
+     phone on a train should not spend 1.8 MB to find out it was a
+     bad idea. Either way the still is already painted, so nothing
+     here can leave the hero blank.
+     -------------------------------------------------------- */
   if (small) {
     hero.classList.add('hero--still');
     layoutDrum(0);
-    startDrumLoop(true);   // tracks scroll, but no canvas work
+    startMobileParallax();
+
+    if (!calm && fastConnection()) upgradeToMobileScrub();
+
+    startDrumLoop(true);
     return;
+  }
+
+  function fastConnection() {
+    var c = navigator.connection || navigator.mozConnection || navigator.webkitConnection;
+    if (!c) return false;
+    if (c.saveData) return false;
+    return c.effectiveType === '4g';
+  }
+
+  /* Parallax rides the same eased drumProgress the beats use, so the
+     frame and the copy move as one object. Writing transform on the
+     tilt layer keeps it on the compositor — no layout, no repaint. */
+  function startMobileParallax() {
+    var still = document.getElementById('heroStill');
+    if (!still || !tilt) return;
+
+    tilt.style.willChange = 'transform';
+
+    mobileParallax = function (p) {
+      var scale = PAR_SCALE[0] + (PAR_SCALE[1] - PAR_SCALE[0]) * p;
+      var shift = (p - 0.5) * 2 * PAR_SHIFT * 100;
+      tilt.style.transform =
+        'translate3d(0,' + shift.toFixed(3) + '%,0) scale(' + scale.toFixed(4) + ')';
+    };
+
+    mobileParallax(0);
+  }
+
+  /* Load the mobile sequence, then hand the loop a real scrub. The
+     canvas is only revealed once enough frames exist to scrub without
+     visibly snapping between the few that arrived first — a canvas that
+     pops in half-loaded looks worse than the still it replaced. */
+  function upgradeToMobileScrub() {
+    var canvasEl = canvas;
+    var still = document.getElementById('heroStill');
+    if (!canvasEl) return;
+
+    var mctx = canvasEl.getContext('2d', { alpha: false });
+    var mframes = new Array(MOBILE.count);
+    var mloaded = new Array(MOBILE.count);
+    var ready = 0;
+    var live = false;
+
+    for (var i = 0; i < MOBILE.count; i++) {
+      (function (idx) {
+        var img = new Image();
+        img.decoding = 'async';
+        img.onload = function () {
+          mloaded[idx] = true;
+          ready += 1;
+          // ~40% in, the gaps are small enough that cross-blending
+          // covers them. Waiting for all 121 would hold the still
+          // most of the way down the hero on a mid-range connection.
+          if (!live && ready > MOBILE.count * 0.4) goLive();
+        };
+        img.src = MOBILE.path + String(idx + 1).padStart(4, '0') + '.jpg';
+        mframes[idx] = img;
+      })(i);
+    }
+
+    function goLive() {
+      live = true;
+      // Class first, then measure. The canvas is display:none until
+      // `hero--scrub` lands, and a hidden element measures 0×0 — sizing
+      // it before the swap would leave the draw path silently no-oping
+      // on a zero-width canvas.
+      hero.classList.add('hero--scrub');
+      sizeMobileCanvas();
+      canvasEl.style.transition = 'opacity 700ms ease-out';
+      requestAnimationFrame(function () {
+        canvasEl.style.opacity = '1';
+        // Drop the still only after the fade has finished, so there is
+        // never a frame with neither layer painted.
+        setTimeout(function () { if (still) still.style.opacity = '0'; }, 700);
+      });
+
+      // Parallax now rides the canvas instead of the still. Keep a
+      // little of it — the scrub is the motion, the drift is seasoning.
+      mobileParallax = function (p) {
+        var scale = 1.06 + (1.0 - 1.06) * p;
+        tilt.style.transform = 'translate3d(0,0,0) scale(' + scale.toFixed(4) + ')';
+      };
+
+      mobileDraw = function (p) {
+        var pos = p * (MOBILE.count - 1);
+        var lo = Math.floor(pos);
+        var frac = pos - lo;
+        var hi = Math.min(lo + 1, MOBILE.count - 1);
+
+        var base = nearestMobile(lo);
+        if (base === -1) return;
+        paintMobile(mframes[base], 1);
+        if (frac > 0.001 && hi !== base && mloaded[hi]) paintMobile(mframes[hi], frac);
+      };
+    }
+
+    function nearestMobile(idx) {
+      if (mloaded[idx]) return idx;
+      for (var d = 1; d < MOBILE.count; d++) {
+        if (idx - d >= 0 && mloaded[idx - d]) return idx - d;
+        if (idx + d < MOBILE.count && mloaded[idx + d]) return idx + d;
+      }
+      return -1;
+    }
+
+    var mw = 0, mh = 0;
+
+    function sizeMobileCanvas() {
+      // Cap DPR at 2: a 3x phone would triple the fill cost for pixels
+      // nobody can resolve on a 720w source.
+      var dpr = Math.min(window.devicePixelRatio || 1, 2);
+      var r = canvasEl.getBoundingClientRect();
+      mw = r.width; mh = r.height;
+      canvasEl.width = Math.round(mw * dpr);
+      canvasEl.height = Math.round(mh * dpr);
+      mctx.setTransform(dpr, 0, 0, dpr, 0, 0);
+    }
+
+    function paintMobile(img, alpha) {
+      if (!img || !img.naturalWidth || !mw) return;
+      var s = Math.max(mw / img.naturalWidth, mh / img.naturalHeight);
+      var w = img.naturalWidth * s;
+      var h = img.naturalHeight * s;
+      mctx.globalAlpha = alpha;
+      mctx.drawImage(img, (mw - w) / 2, (mh - h) / 2, w, h);
+      mctx.globalAlpha = 1;
+    }
+
+    window.addEventListener('resize', function () {
+      if (live) sizeMobileCanvas();
+    });
   }
 
   /* --------------------------------------------------------
@@ -295,6 +466,10 @@
           drumProgress += (t - drumProgress) * k;
           if (Math.abs(t - drumProgress) < SNAP / 100) drumProgress = t;
           layoutDrum(drumProgress);
+
+          // Same eased value the beats get — frame and copy stay welded.
+          mobileParallax(drumProgress);
+          if (mobileDraw) mobileDraw(drumProgress);
         } else {
           layoutDrum(progressRef.value);
         }

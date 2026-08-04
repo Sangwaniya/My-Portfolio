@@ -21,6 +21,25 @@
   // way — it just tracks native scroll 1:1 instead.
   var reduced = window.matchMedia('(prefers-reduced-motion: reduce)').matches;
 
+  /* Touch devices keep native scrolling, full stop.
+     This layer is a main-thread rAF loop calling window.scrollTo. On a
+     mouse that is an upgrade — wheel events arrive as discrete clicks
+     and the tween is what turns them into a glide. On a finger it is
+     strictly a downgrade: native touch scroll runs on the compositor,
+     survives a busy main thread, and has real fling momentum. Matching
+     that here meant preventDefault on every touchmove and a tween that
+     trailed the finger by ~9 frames — and there was no touchend handler
+     at all, so lifting off stopped the page dead. Nothing we can write
+     on the main thread beats what the platform already does.
+
+     `pointer: coarse` describes the primary pointer, and a touchscreen
+     laptop reports coarse too — verified, not assumed — so those
+     machines also fall back to native. That is the right call anyway:
+     if a device can be touched, the finger path has to be the good one,
+     and their trackpads already emit smooth high-resolution wheel
+     deltas that need no help from us. */
+  var coarse = window.matchMedia('(pointer: coarse)').matches;
+
   // Public shim so callers don't branch. Replaced below when active.
   window.SmoothScroll = {
     active: false,
@@ -39,6 +58,9 @@
   function nativeScrollTo(target) {
     var y = resolveTarget(target);
     if (y === null) return;
+    // Only reduced motion wants an instant jump. A touch device still
+    // gets the smooth glide for anchor taps — that one is native and
+    // compositor-driven, which is exactly what we want on a phone.
     window.scrollTo({ top: y, behavior: reduced ? 'auto' : 'smooth' });
   }
 
@@ -58,7 +80,10 @@
     el.focus({ preventScroll: true });
   });
 
-  if (reduced) return; // native scrolling, nothing else to set up
+  // Both bail out before any of the wheel/touch plumbing is wired up,
+  // so on a phone there is no preventDefault, no rAF loop, and no
+  // scrollTo fighting the compositor. Anchor links above still work.
+  if (reduced || coarse) return;
 
   document.documentElement.classList.add('has-smooth');
 
@@ -106,6 +131,11 @@
   }
 
   function onTouchStart(e) {
+    /* Only reachable on a device whose primary pointer is fine *and*
+       that still delivers touch events — rare, but a pen digitiser or a
+       remote-desktop session can do it. Kept so those cases degrade to
+       the wheel behaviour rather than to nothing. Phones, tablets and
+       touchscreen laptops all bail out long before this. */
     if (e.touches.length > 1) { pinching = true; return; }
     pinching = false;
     touchY = e.touches[0].clientY;

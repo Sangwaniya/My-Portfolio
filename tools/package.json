@@ -1,0 +1,7 @@
+{
+  "name": "personal-website-tools",
+  "private": true,
+  "type": "module",
+  "description": "One-off asset encoding. Not a dependency of the site itself.",
+  "devDependencies": { "sharp": "^0.34.0" }
+}

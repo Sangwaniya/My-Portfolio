@@ -14,3 +14,10 @@ desktop.ini
 .DS_Store
 .vscode/
 .idea/
+
+# Asset/test tooling. The scripts themselves are committed; sharp and
+# puppeteer-core are a ~150 MB install nobody needs to clone, and the
+# screenshots are scratch output.
+tools/node_modules/
+tools/package-lock.json
+tools/shots/

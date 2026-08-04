@@ -24,7 +24,8 @@ Any static server works — `npx serve`, `php -S localhost:8000`, VS Code Live S
 - With the mouse still at the top of the page, moving the pointer tilts the frame. It settles flat the instant you start scrolling.
 - At the bottom of the hero it rests on the last frame, then the page continues normally.
 - Resize the window — the frame re-covers with no letterboxing.
-- Narrow the window under 768px and reload: it should show a single still, and only ever request `frame_0001.jpg`.
+- Narrow the window under 768px and reload: the hero parallaxes the still, and on a 4G connection it upgrades to the mobile sequence. It must never request a `frames/` (desktop) image beyond `frame_0001.jpg`.
+- On a real phone, scrolling should feel exactly like native — flick and it coasts. If it feels rubbery or stops dead on lift-off, the smooth-scroll layer has stopped bailing out on touch.
 - In the contact section the globe turns on its own — slowly, one full turn per 95 seconds — and the five satellites keep orbiting at their own rates, 50s to 110s a lap. Drag it in any direction to spin it, horizontally and vertically, and let go for momentum. Arrow keys work once it's focused, `Home` resets the framing.
 - Behind the section, particles drift and draw hairlines between any two that come close. Move the pointer through them and they push aside. This should be true whether or not reduced motion is on — the console prints `[globe] mode: LIVE (1x)` or `CALM (reduced-motion, 0.4x pace)`, and both drift.
 
@@ -77,9 +78,78 @@ assets/js/hero.js            canvas scrubber + text drum
 assets/js/site.js            reveals + validity meters
 assets/js/globe.js           contact-section globe + particle field
 assets/fonts/                Latin Modern, subset
-public/hero/frames/          241 JPEGs, 1920x1080, ~15 MB
+public/hero/frames/          241 JPEGs, 1920x1080, ~15 MB  (desktop)
+public/hero/frames-mobile/   121 JPEGs, 720x405, ~1.8 MB   (phones, 4G only)
+tools/                       asset encoding + browser tests, not served
 Animation.mp4                source video (not served, not committed)
 ```
+
+## Mobile
+
+Three things behave differently under 768px, and they are deliberate.
+
+**Scrolling is native.** `smooth-scroll.js` bails out on `(pointer: coarse)`
+before it wires up a single listener. That layer is a main-thread rAF loop
+calling `window.scrollTo` — an upgrade for a mouse wheel, a downgrade for a
+finger. Native touch scroll runs on the compositor and has real fling
+momentum; matching it in JS meant `preventDefault` on every `touchmove`, a
+tween trailing the finger by ~9 frames, and no fling at all. Anchor taps
+still glide, via native `scrollTo({behavior:'smooth'})`.
+
+**The hero has two tiers.** Every phone gets scroll-driven parallax on the
+still — a compositor-only transform, no extra bytes, driven by the same eased
+progress the text drum reads so frame and copy can never drift apart. On a
+connection that can afford it (`effectiveType === '4g'`, `saveData` off) the
+121-frame mobile sequence loads and cross-fades into a real scrub once ~40%
+has arrived. No Network Information API means no upgrade — a phone on a train
+should not spend 1.8 MB finding out that was a bad idea. Reduced motion also
+stays on parallax.
+
+**Reveals stagger per batch.** Anything crossing the threshold in the same
+`IntersectionObserver` callback is treated as one visual group and cascades at
+90 ms intervals, capped at 360 ms. A section arriving alone gets no delay, so
+the rhythm comes from the content rather than hard-coded `nth-child` rules.
+
+## Re-encoding the mobile frames
+
+`tools/` is not a dependency of the site — it has no build step and no
+`node_modules` at runtime. Install once, then run when the source video
+changes:
+
+```bash
+cd tools && npm install
+node tools/encode-mobile-frames.mjs      # from the repo root
+```
+
+It prints the frame count; put that in `MOBILE.count` in `assets/js/hero.js`.
+Adjust `WIDTH`/`QUALITY`/`STEP` at the top of the script to trade size against
+smoothness — `STEP = 2` means every second desktop frame.
+
+## Tests
+
+Real Chrome, real viewports, real scrolling. Needs `cd tools && npm install`
+first (pulls `puppeteer-core`; Chrome itself is expected at the standard
+Windows path — edit `CHROME` if yours differs).
+
+```bash
+node tools/test-mobile.mjs    # tier selection, parallax, reveals, no desktop frames on phones
+node tools/test-touch.mjs     # touchmove not hijacked, desktop keeps smooth scroll, canvas really paints
+node tools/shoot.mjs          # screenshots to tools/shots/ at four scroll depths
+```
+
+`test-mobile` asserts the connection gate in all four combinations (4G,
+3G, Save-Data, reduced motion). Note that headless Chrome reports
+`prefers-reduced-motion: reduce` **by default** — both suites set it
+explicitly, and forgetting to is a silent way to test the wrong thing.
+
+To decide whether something is a regression or was always broken, extract
+any commit and shoot it side by side:
+
+```bash
+git archive v1.0 | tar -x -C /tmp/baseline
+node tools/shoot-baseline.mjs /tmp/baseline
+```
+
 
 ## Re-extracting frames
 

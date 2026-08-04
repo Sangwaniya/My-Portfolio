@@ -178,15 +178,38 @@ a{color:inherit;text-decoration:none}
   width:100%;height:100%;
   object-fit:cover;
   display:none;
+  transition:opacity .7s ease-out;
 }
 .hero--still .hero__still{display:block}
 .hero--still .hero__canvas{display:none}
 
-/* Phones only. No image sequence, but the hero still pins and the
-   drum still rolls against a shorter track, so beats two and three
-   are never lost. Reduced motion does NOT come here — it keeps the
-   full scrub, minus the lag and the tilt. */
+/* Phones only. The still is scroll-parallaxed rather than parked, and
+   on a fast connection it is replaced outright — see `hero--scrub`
+   below. The hero still pins and the drum still rolls against a
+   shorter track, so beats two and three are never lost. Reduced
+   motion does NOT come here — it keeps the full scrub, minus the lag
+   and the tilt. */
 .hero--still .hero__track{height:300vh}
+
+/* The mobile sequence arrived and took over. Both layers are up during
+   the cross-fade, canvas above still, so there is never a gap. The
+   canvas is static in flow by default and the still is absolute, which
+   would paint the still on top — position it explicitly instead of
+   relying on source order. */
+.hero--still.hero--scrub .hero__canvas{
+  display:block;
+  position:absolute;inset:0;
+  z-index:1;
+}
+
+/* The parallax writes transform on this layer every frame. Promoting it
+   once here keeps the phone compositing a cached texture instead of
+   re-rasterising a full-bleed image on every scroll tick. */
+.hero--still .hero__tilt{
+  will-change:transform;
+  backface-visibility:hidden;
+  -webkit-backface-visibility:hidden;
+}
 
 /* legibility scrim — centre of the frame stays untouched */
 .hero__scrim{position:absolute;inset:0;pointer-events:none}
